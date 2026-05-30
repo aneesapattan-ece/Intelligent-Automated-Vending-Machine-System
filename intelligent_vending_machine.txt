@@ -1,0 +1,247 @@
+#include <LiquidCrystal.h>
+#include <Servo.h>
+
+// LCD pins
+LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
+
+// Servo object
+Servo vendingServo;
+
+// Pin definitions
+const int buySwitch = 2;
+const int servoPin = 3;
+const int greenLED = 4;
+const int redLED = 5;
+const int buzzer = 6;
+
+const int productPot = A0;
+const int moneyPot = A1;
+
+// Variables
+int productValue = 0;
+int moneyValue = 0;
+
+String selectedProduct = "";
+int productPrice = 0;
+int insertedMoney = 0;
+int balance = 0;
+
+void setup()
+{
+  // LCD setup
+  lcd.begin(16, 2);
+
+  // Servo setup
+  vendingServo.attach(servoPin);
+  vendingServo.write(0);
+
+  // Pin modes
+  pinMode(buySwitch, INPUT_PULLUP);
+  pinMode(greenLED, OUTPUT);
+  pinMode(redLED, OUTPUT);
+  pinMode(buzzer, OUTPUT);
+
+  // Initial LED states
+  digitalWrite(greenLED, LOW);
+  digitalWrite(redLED, HIGH);
+
+  // Startup screen
+  lcd.setCursor(0, 0);
+  lcd.print(" SMART VENDING");
+  lcd.setCursor(0, 1);
+  lcd.print("   MACHINE");
+
+  delay(3000);
+
+  lcd.clear();
+}
+
+void loop()
+{
+  // Read potentiometers
+  productValue = analogRead(productPot);
+  moneyValue = analogRead(moneyPot);
+
+  // Product selection
+  if (productValue <= 300)
+  {
+    selectedProduct = "Chips";
+    productPrice = 10;
+  }
+  else if (productValue <= 700)
+  {
+    selectedProduct = "Coke";
+    productPrice = 20;
+  }
+  else
+  {
+    selectedProduct = "Chocolate";
+    productPrice = 30;
+  }
+
+  // Money selection
+  if (moneyValue <= 300)
+  {
+    insertedMoney = 10;
+  }
+  else if (moneyValue <= 700)
+  {
+    insertedMoney = 20;
+  }
+  else
+  {
+    insertedMoney = 50;
+  }
+
+  // Display product and money
+  lcd.setCursor(0, 0);
+  lcd.print(selectedProduct);
+  lcd.print(" Rs");
+  lcd.print(productPrice);
+  lcd.print("   ");
+
+  lcd.setCursor(0, 1);
+  lcd.print("Money: Rs");
+  lcd.print(insertedMoney);
+  lcd.print("   ");
+
+  // Check buy switch
+  if (digitalRead(buySwitch) == LOW)
+  {
+    // Enough money
+    if (insertedMoney >= productPrice)
+    {
+      balance = insertedMoney - productPrice;
+      dispenseProduct();
+    }
+    else
+    {
+      insufficientBalance();
+    }
+  }
+
+  delay(200);
+}
+
+void dispenseProduct()
+{
+  // LEDs
+  digitalWrite(redLED, LOW);
+  digitalWrite(greenLED, HIGH);
+
+  // LCD dispensing message
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Dispensing...");
+  lcd.setCursor(0, 1);
+  lcd.print(selectedProduct);
+
+  // Success buzzer
+  tone(buzzer, 1000);
+  delay(300);
+  noTone(buzzer);
+
+  // Servo movement
+  vendingServo.write(90);
+  delay(1000);
+
+  vendingServo.write(0);
+  delay(1000);
+
+  // Green LED OFF
+  digitalWrite(greenLED, LOW);
+
+  // Thank you screen
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Thank You!");
+
+  // If balance exists
+  if (balance > 0)
+  {
+    lcd.setCursor(0, 1);
+    lcd.print("Bal Rs:");
+    lcd.print(balance);
+
+    // Double beep for balance return
+    tone(buzzer, 1200);
+    delay(200);
+    noTone(buzzer);
+
+    delay(200);
+
+    tone(buzzer, 1200);
+    delay(200);
+    noTone(buzzer);
+  }
+  else
+  {
+    lcd.setCursor(0, 1);
+    lcd.print("Visit Again");
+  }
+
+  delay(2500);
+
+  // Startup screen again
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print(" SMART VENDING");
+
+  lcd.setCursor(0, 1);
+  lcd.print("   MACHINE");
+
+  delay(3000);
+
+  // Wait until switch OFF
+  while (digitalRead(buySwitch) == LOW)
+  {
+    delay(10);
+  }
+
+  // Return to standby mode
+  digitalWrite(redLED, HIGH);
+
+  lcd.clear();
+}
+
+void insufficientBalance()
+{
+  // LEDs
+  digitalWrite(greenLED, LOW);
+  digitalWrite(redLED, HIGH);
+
+  // Error buzzer
+  tone(buzzer, 300);
+  delay(700);
+  noTone(buzzer);
+
+  // LCD error message
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Insufficient");
+
+  lcd.setCursor(0, 1);
+  lcd.print("Balance");
+
+  delay(2000);
+
+  // Show startup screen again
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print(" SMART VENDING");
+
+  lcd.setCursor(0, 1);
+  lcd.print("   MACHINE");
+
+  delay(3000);
+
+  // Wait until switch OFF
+  while (digitalRead(buySwitch) == LOW)
+  {
+    delay(10);
+  }
+
+  lcd.clear();
+}
